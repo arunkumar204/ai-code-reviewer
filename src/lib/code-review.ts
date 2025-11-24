@@ -1,4 +1,3 @@
-
 export interface CodeReview {
   id: string;
   userId: string;
@@ -37,10 +36,8 @@ const REVIEWS_STORAGE_KEY = 'ai_code_reviewer_reviews';
 
 function getReviews(): CodeReview[] {
   if (typeof window === 'undefined') return [];
-  
   const data = localStorage.getItem(REVIEWS_STORAGE_KEY);
   if (!data) return [];
-  
   try {
     return JSON.parse(data);
   } catch {
@@ -55,9 +52,9 @@ function saveReviews(reviews: CodeReview[]): void {
 
 export function getUserReviews(userId: string): CodeReview[] {
   const reviews = getReviews();
-  return reviews.filter(r => r.userId === userId).sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  return reviews
+    .filter(r => r.userId === userId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export function getReviewById(reviewId: string): CodeReview | null {
@@ -68,46 +65,53 @@ export function getReviewById(reviewId: string): CodeReview | null {
 export function deleteReview(reviewId: string, userId: string): { success: boolean; error?: string } {
   const reviews = getReviews();
   const reviewIndex = reviews.findIndex(r => r.id === reviewId && r.userId === userId);
-  
-  if (reviewIndex === -1) {
-    return { success: false, error: 'Review not found' };
-  }
-  
+  if (reviewIndex === -1) return { success: false, error: 'Review not found' };
   reviews.splice(reviewIndex, 1);
   saveReviews(reviews);
-  
   return { success: true };
 }
 
-// AI Code Analysis Simulation
-export async function analyzeCode(code: string, language: string, userId: string, fileName?: string): Promise<CodeReview> {
-  // Simulate API delay
+// ----------------------
+// CODE VALIDATION FUNCTION
+// ----------------------
+function isValidCode(input: string): boolean {
+  const codePattern = /[{}();=<>]|function|class|import|const|let|var/;
+  return codePattern.test(input.trim());
+}
+
+// ----------------------
+// AI CODE ANALYSIS
+// ----------------------
+export async function analyzeCode(
+  code: string,
+  language: string,
+  userId: string,
+  fileName?: string
+): Promise<CodeReview> {
+  // Only analyze if valid code
+  if (!isValidCode(code)) {
+    throw new Error('Invalid input. Please enter valid code to analyze.');
+  }
+
   await new Promise(resolve => setTimeout(resolve, 2000));
-  
+
   const reviewId = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const createdAt = new Date().toISOString();
-  
-  // Simulate AI analysis
+
   const analysis = performCodeAnalysis(code, language);
-  
-  const review: CodeReview = {
-    id: reviewId,
-    userId,
-    code,
-    language,
-    fileName,
-    createdAt,
-    analysis,
-  };
-  
-  // Save review
+
+  const review: CodeReview = { id: reviewId, userId, code, language, fileName, createdAt, analysis };
+
   const reviews = getReviews();
   reviews.push(review);
   saveReviews(reviews);
-  
+
   return review;
 }
 
+// ----------------------
+// PERFORM CODE ANALYSIS
+// ----------------------
 function performCodeAnalysis(code: string, language: string): CodeAnalysis {
   const lines = code.split('\n');
   const issues: CodeIssue[] = [];
@@ -205,10 +209,18 @@ function performCodeAnalysis(code: string, language: string): CodeAnalysis {
   let penalty = 0;
   issues.forEach(issue => {
     switch (issue.severity) {
-      case 'critical': penalty += 25; break;
-      case 'high': penalty += 15; break;
-      case 'medium': penalty += 7; break;
-      case 'low': penalty += 3; break;
+      case 'critical':
+        penalty += 25;
+        break;
+      case 'high':
+        penalty += 15;
+        break;
+      case 'medium':
+        penalty += 7;
+        break;
+      case 'low':
+        penalty += 3;
+        break;
     }
   });
   const overallScore = Math.max(0, 100 - penalty);
@@ -216,17 +228,17 @@ function performCodeAnalysis(code: string, language: string): CodeAnalysis {
   const suggestions = issues.slice(0, 5).map(issue => issue.suggestion || issue.message);
 
   let summary = '';
-  if (overallScore >= 80) summary = 'Excellent code quality! Your code follows best practices with minimal issues.';
-  else if (overallScore >= 60) summary = 'Good code quality with some areas for improvement. Address the identified issues to enhance code reliability.';
-  else if (overallScore >= 40) summary = 'Moderate code quality. Several issues need attention to improve maintainability and security.';
-  else summary = 'Code needs significant improvement. Please address critical and high-severity issues immediately.';
+  if (overallScore >= 80)
+    summary = 'Excellent code quality! Your code follows best practices with minimal issues.';
+  else if (overallScore >= 60)
+    summary =
+      'Good code quality with some areas for improvement. Address the identified issues to enhance code reliability.';
+  else if (overallScore >= 40)
+    summary =
+      'Moderate code quality. Several issues need attention to improve maintainability and security.';
+  else
+    summary =
+      'Code needs significant improvement. Please address critical and high-severity issues immediately.';
 
-  return {
-    overallScore,
-    issues,
-    suggestions,
-    metrics: { complexity, maintainability, readability, security },
-    summary,
-  };
+  return { overallScore, issues, suggestions, metrics: { complexity, maintainability, readability, security }, summary };
 }
-
