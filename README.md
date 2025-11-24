@@ -120,7 +120,7 @@ Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## License
 
-MIT License © [Your Name]
+MIT License © [arunkumar204]
 
 ---
 
